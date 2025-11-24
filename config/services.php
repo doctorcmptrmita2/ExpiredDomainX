@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'dataforseo' => [
+        'api_url' => env('DATAFORSEO_API_URL', 'https://api.dataforseo.com/v3'),
+        'api_login' => env('DATAFORSEO_API_LOGIN', 'info@whadvisor.io'),
+        'api_password' => env('DATAFORSEO_API_PASSWORD', '32ab7f35adb1dde1'),
+    ],
+
 ];

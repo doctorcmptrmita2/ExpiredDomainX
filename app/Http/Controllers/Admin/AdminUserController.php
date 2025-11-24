@@ -10,6 +10,16 @@ use Illuminate\View\View;
 
 class AdminUserController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!auth()->user() || !auth()->user()->isAdmin()) {
+                abort(403);
+            }
+            return $next($request);
+        });
+    }
+
     public function index(): View
     {
         $users = User::withCount('watchlistItems')->paginate(25);

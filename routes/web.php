@@ -38,16 +38,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
-    Route::middleware(function ($request, $next) {
-        if (!auth()->user() || !auth()->user()->isAdmin()) {
-            abort(403);
-        }
-        return $next($request);
-    })->group(function () {
-        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
-        Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
-        Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.update-plan');
-    });
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::patch('/users/{user}/plan', [AdminUserController::class, 'updatePlan'])->name('users.update-plan');
 });
 
 require __DIR__.'/auth.php';

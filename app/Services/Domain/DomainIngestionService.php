@@ -5,6 +5,7 @@ namespace App\Services\Domain;
 use App\Models\Domain;
 use App\Models\DomainMetric;
 use App\Services\DataForSeo\DataForSeoClientInterface;
+use App\Services\DataForSeo\HttpDataForSeoClient;
 use Illuminate\Support\Facades\Log;
 
 class DomainIngestionService
@@ -47,6 +48,69 @@ class DomainIngestionService
         }
 
         return $ingested;
+    }
+
+    /**
+     * Fetch and update domain data from DataForSEO API
+     */
+    public function fetchDomainFromDataForSeo(string $domainName): ?Domain
+    {
+        if (!($this->dataForSeoClient instanceof HttpDataForSeoClient)) {
+            Log::warning('DataForSEO client is not HttpDataForSeoClient', [
+                'domain' => $domainName,
+            ]);
+            return null;
+        }
+
+        try {
+            // Fetch WHOIS data
+            $whoisData = $this->dataForSeoClient->fetchDomainAnalytics($domainName);
+            
+            if (!$whoisData) {
+                Log::warning('No WHOIS data returned from DataForSEO', [
+                    'domain' => $domainName,
+                ]);
+                return null;
+            }
+
+            // Fetch backlinks data
+            $backlinksData = $this->dataForSeoClient->fetchDomainBacklinks($domainName);
+
+            // Create or update domain
+            $domain = Domain::updateOrCreate(
+                ['name' => $domainName],
+                [
+                    'tld' => $whoisData['tld'] ?? null,
+                    'registrar' => $whoisData['registrar'] ?? null,
+                    'status' => $whoisData['status'] ?? 'active',
+                    'registered_at' => $whoisData['registered_at'] ?? null,
+                    'expires_at' => $whoisData['expires_at'] ?? null,
+                    'country' => $whoisData['country'] ?? null,
+                    'last_checked_at' => now(),
+                ]
+            );
+
+            // Create metrics
+            $metrics = [
+                'organic_traffic' => 0, // DataForSEO doesn't provide this directly
+                'organic_keywords' => 0, // DataForSEO doesn't provide this directly
+                'backlinks_total' => $backlinksData['backlinks_total'] ?? 0,
+                'referring_domains' => $backlinksData['referring_domains'] ?? 0,
+            ];
+
+            $this->createMetric($domain, $metrics, [
+                'whois' => $whoisData['raw_payload'] ?? null,
+                'backlinks' => $backlinksData['raw_payload'] ?? null,
+            ]);
+
+            return $domain;
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch domain from DataForSEO', [
+                'domain' => $domainName,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     private function createMetric(Domain $domain, array $metrics, ?array $rawPayload = null): void
